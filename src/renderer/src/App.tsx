@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { Button, Layout, theme, Tabs } from 'antd'
+import { useState, useEffect, useCallback } from 'react'
+import { Layout, theme, Tabs } from 'antd'
 import MarkdownEditor from './components/MarkdownEditor'
 import FileTree from './components/FileTree'
 import { ProfileOutlined } from '@ant-design/icons'
@@ -79,9 +79,6 @@ function App(): JSX.Element {
     token: { colorBgContainer },
   } = theme.useToken();
 
-  const saveBtnRef = useRef(null)
-  const saveAsBtnRef = useRef(null)
-
   const loadSubFolderData = async (data) => {
     setFolderTree([...data])
   }
@@ -99,48 +96,97 @@ function App(): JSX.Element {
     window.api[action]()
   }
 
-  const clickSaveFile = async () => {
-    const _file = files.find(it => it.path === file?.path)
-    if(_file) window.api.requestSaveFile(_file.fileContent || '', _file.path)
-  }
+  useEffect(() => {
+    window.onbeforeunload = () => {
+      window.api.saveUserPreferencesData('openFiles', files.map(f => ({
+        name: f.name,
+        path: f.path,
+        fileContent: f.path.startsWith('fakePath') ? f.fileContent : ''
+      })))
+      window.api.saveUserPreferencesData('file', file)
+    }
+    return () => { window.onbeforeunload = null }
+  }, [files, file])
 
-  const clickSaveAsFile = async () => {
+  useEffect(() => {
+    // 初始化，获取 user-persisted data
+    window.api.requestUserPreferencesData(['rootFolder', 'openFiles', 'file']).then(async (data) => {
+      const { rootFolder, openFiles, file } = data
+      
+      if (rootFolder) {
+        window.api.requestLoadFolder(rootFolder)
+      }
+      
+      if (openFiles) {
+        const files = await Promise.all(openFiles.filter(file => file.path).map(async file => {
+
+          let fileContent = file.fileContent || ''
+
+          if (!file.path.startsWith('fakePath')) {
+            fileContent = await window.api.requestFileContent(file.path)
+          }
+
+          return {
+            ...file,
+            fileContent
+          }
+        }))
+
+        if (files.length > 0) {
+          setFiles(files)
+          setFile(file || files[0])
+        }
+      }
+    })
+  }, [])
+
+  const saveAsFile = useCallback(() => {
     const _file = files.find(it => it.path === file?.path)
     if(_file) window.api.requestSaveAsFile(_file.fileContent || '')
-  }
+  }, [files])
+
+  const saveFile = useCallback(() => {
+    const _file = files.find(it => it.path === file?.path)
+    if(_file) window.api.requestSaveFile(_file.fileContent || '', _file.path)
+  }, [files])
 
   useEffect(() => {
-    window.api.saveFile(() => {
-      // @ts-ignore
-      // setState callback 方式可以解决 待重构
-      saveBtnRef.current.click()
+    let callback1 = window.api.saveFile(() => {
+      saveFile()
     })
   
-    window.api.saveAsFile(() => {
-      // @ts-ignore
-      // setState callback 方式可以解决 待重构
-      saveAsBtnRef.current.click()
+    let callback2 = window.api.saveAsFile(() => {
+      saveAsFile()
     })
-  } , []) 
+
+    return () => {
+      callback1 && callback1()
+      callback2 && callback2()
+    }
+  } , [files]) 
 
   useEffect(() => {
-    window.api.newFile(() => {
+    let callback1 = window.api.newFile(() => {
       add({ name: '未命名文件', path: 'fakePath' + Date.now(), fileContent: '' });
     })
 
-    window.api.loadFile((fileContent, file, oldFilePath) => {
+    let callback2 = window.api.loadFile((fileContent, file, oldFilePath) => {
       add({ name: file.name, path: file.path, fileContent: fileContent }, oldFilePath)
     })
 
-    window.api.loadFolder(folderTree => {
+    let callback3 = window.api.loadFolder(folderTree => {
       setFolderTree([folderTree])
     })
+
+    return () => {
+      callback1 && callback1()
+      callback2 && callback2()
+      callback3 && callback3()
+    }
   }, [])
 
   return (
     <Layout style={{height: '100vh'}}>
-      <Button style={{display: 'none'}} ref={saveBtnRef} onClick={()=> clickSaveFile()}>save</Button>
-      <Button style={{display: 'none'}} ref={saveAsBtnRef} onClick={()=> clickSaveAsFile()}>saveAs</Button>
       <Sider
         trigger={<ProfileOutlined style={{fontSize: 12}}/>}
         theme={'light'} collapsible collapsed={collapsed} collapsedWidth={0} onCollapse={() => setCollapsed(!collapsed)}>

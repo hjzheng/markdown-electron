@@ -5,6 +5,8 @@ import icon from '../../resources/icon.png?asset'
 import { createApplicationMenu } from './createApplicationMenu'
 import fs from 'fs'
 import path from 'path'
+import { store } from './store'
+
 const dirTree = require("directory-tree")
 
 function createWindow(): void {
@@ -66,6 +68,8 @@ app.whenReady().then(() => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
+// list app life cycle events here: https://www.electronjs.org/docs/api/app#event-quit
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
@@ -131,12 +135,12 @@ ipcMain.handle('requestSaveAs', (event, fileContent) => {
 });
 
 ipcMain.handle('requestSubDirectory', (_event, path) => {
-  const callback =  (item) => {
+  const callback = (item) => {
     item.isLeaf = item.type === 'file'
     item.title = item.name
     item.key = item.path
   }
-  return dirTree(path, {attributes: ["type", "extension"], depth: 1}, callback, callback)
+  return dirTree(path, { attributes: ["type", "extension"], depth: 1 }, callback, callback)
 })
 
 ipcMain.handle('requestFileContent', (_event, path) => {
@@ -149,4 +153,22 @@ ipcMain.handle('requestFileContent', (_event, path) => {
       resolve(data)
     })
   })
+})
+
+ipcMain.handle('requestUserPreferencesData', (_event, keys) => {
+  let res = keys.reduce((obj, key) => {
+    obj[key] = store.get(key)
+    return obj
+  }, {})
+
+  return res
+})
+
+ipcMain.handle('saveUserPreferencesData', (_event, key, value) => {
+  try {
+    store.set(key, value)
+    return true
+  } catch (e) {
+    return false
+  }
 })

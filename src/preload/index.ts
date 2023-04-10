@@ -7,25 +7,33 @@ const api = {
     return ipcRenderer.send('requestNewFile')
   },
   newFile(callback: () => void) {
-    ipcRenderer.on('newFile', (_event) => {
+    const _callback = (_event) => {
       callback()
-    })
+    }
+    ipcRenderer.on('newFile', _callback)
+    return () => ipcRenderer.off('newFile', _callback)
   },
   requestLoadFile() {
     return ipcRenderer.send('requestLoadFile')
   },
   loadFile(callback: (fileContent: string, file, oldFilePath) => void) {
-    ipcRenderer.on('load', (_event, fileContent, file, oldFilePath) => {
+    const _callback = (_event, fileContent, file, oldFilePath) => {
       callback(fileContent, file, oldFilePath)
-    })
+    }
+    ipcRenderer.on('load', _callback)
+
+    return () => ipcRenderer.off('load', _callback)
   },
-  requestLoadFolder() {
-    return ipcRenderer.send('requestLoadFolder')
+  requestLoadFolder(rootFolder) {
+    return ipcRenderer.send('requestLoadFolder', rootFolder)
   },
   loadFolder(callback: (folderTree: any) => void) {
-    ipcRenderer.on('loadDirectory', (_event, folderTree) => {
+    const _callback = (_event, folderTree) => {
       callback(folderTree)
-    })
+    }
+    ipcRenderer.on('loadDirectory', _callback)
+
+    return () => ipcRenderer.off('loadDirectory', _callback)
   },
   requestFileContent(path: string) {
     return ipcRenderer.invoke('requestFileContent', path)
@@ -35,15 +43,23 @@ const api = {
   },
   saveFile(callback) {
     ipcRenderer.on('saveFile', callback)
+    return () => ipcRenderer.off('saveFile', callback)
   },
   saveAsFile(callback) {
     ipcRenderer.on('saveAsFile', callback)
+    return () => ipcRenderer.off('saveAsFile', callback)
   },
   requestSaveFile(fileContent: string, fileName: string) {
     ipcRenderer.invoke('requestSave', fileContent, fileName)
   },
   requestSaveAsFile(fileContent: string) {
     ipcRenderer.invoke('requestSaveAs', fileContent)
+  },
+  requestUserPreferencesData(keys: ('rootFolder' | 'openFiles' | 'file')[]) {
+    return ipcRenderer.invoke('requestUserPreferencesData', keys)
+  },
+  saveUserPreferencesData(key: 'rootFolder' | 'openFiles' | 'file', value) {
+    return ipcRenderer.invoke('saveUserPreferencesData', key, value)
   }
 }
 

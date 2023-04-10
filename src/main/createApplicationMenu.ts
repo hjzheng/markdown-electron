@@ -1,6 +1,7 @@
 import { shell, Menu, BrowserWindow, dialog, ipcMain } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import { store } from './store'
 
 const dirTree = require("directory-tree")
 
@@ -21,12 +22,12 @@ function newFile() {
 
     window.webContents.send('newFile');
 }
-  
+
 function loadFile() {
     const window = BrowserWindow.getFocusedWindow();
 
     if (!window) return
-    
+
     const files = dialog.showOpenDialogSync(window, {
         properties: ['openFile'],
         title: 'Pick a markdown file',
@@ -45,24 +46,31 @@ function loadFile() {
     });
 }
 
-function loadFolder() {
+function loadFolder(rootFolder?: string) {
     const window = BrowserWindow.getFocusedWindow();
 
     if (!window) return
-    
-    const folder = dialog.showOpenDialogSync(window, {
-        properties: ['openDirectory'],
-        title: 'Pick a Directory',
-    });
 
-    if (folder && folder?.length > 0) {
-        const callback =  (item) => {
+    let folders: string[] = []
+
+    if (rootFolder) {
+        folders = [rootFolder]
+    } else {
+        folders = dialog.showOpenDialogSync(window, {
+            properties: ['openDirectory'],
+            title: 'Pick a Directory',
+        }) || [];
+    }
+
+    if (folders && folders?.length > 0) {
+        const callback = (item) => {
             item.isLeaf = item.type === 'file'
             item.title = item.name
             item.key = item.path
         }
-        const filteredTree = dirTree(folder[0], {attributes: ["type", "extension"], depth: 1}, callback, callback)
+        const filteredTree = dirTree(folders[0], { attributes: ["type", "extension"], depth: 1 }, callback, callback)
         window.webContents.send('loadDirectory', filteredTree)
+        store.set('rootFolder', folders[0])
     }
 }
 
@@ -74,8 +82,8 @@ ipcMain.on('requestLoadFile', () => {
     loadFile()
 })
 
-ipcMain.on('requestLoadFolder', () => {
-    loadFolder()
+ipcMain.on('requestLoadFolder', (_event, rootFolder?) => {
+    loadFolder(rootFolder)
 })
 
 export function createApplicationMenu() {
