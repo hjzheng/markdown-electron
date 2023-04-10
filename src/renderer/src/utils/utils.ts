@@ -20,3 +20,41 @@ export const findTreeNode = (treeData, path) => {
 
 
 export const EE = new EventEmitter()
+
+export const getFileName = (path: string) => {
+    // windows
+    if (path.indexOf('\\') > -1) {
+        const arr = path.split('\\')
+        return arr[arr.length - 1]
+    } else {
+        const arr = path.split('/')
+        return arr[arr.length - 1]
+    }
+}
+
+export const getParentPaths = (rootFolderPath: string, filePath: string) => {
+    let isWindows = rootFolderPath.indexOf('\\') > -1
+
+    let separator = isWindows ? '\\' : '/'
+
+    let paths = [rootFolderPath]
+
+    let prefix = rootFolderPath
+
+    if (filePath.startsWith(rootFolderPath)) {
+        let reg = new RegExp(`^${rootFolderPath}`)
+        let tmpPath = filePath.replace(reg, '')
+        let tmps = tmpPath.split(separator)
+        tmps.shift()
+        tmps.pop()
+
+        while (tmps.length !== 0) {
+            let x = tmps.shift()
+            prefix = prefix + separator + x
+            paths.push(prefix)
+        }
+        return paths
+    } else {
+        return null
+    }
+}

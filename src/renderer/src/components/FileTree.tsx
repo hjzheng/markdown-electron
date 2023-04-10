@@ -8,15 +8,19 @@ interface IProps {
   data: any[]
   onSelect?: (keys: React.Key[], info: any) => void
   onLoadData?: (data) => Promise<void>
+  selectFile?: string
+  expandedKeys?: string[]
+  onExpand?: (keys: React.Key[], info: any) => void
 }
 
-const FileTree = ({data, onSelect, onLoadData}: IProps) => {
+const FileTree = ({data, onLoadData, onSelect, selectFile, onExpand, expandedKeys}: IProps) => {
 
   const { height } = useWindowSize()
 
   const select: DirectoryTreeProps['onSelect'] = (keys, info) => {
     onSelect && onSelect(keys, info)
   };
+
 
   const loadData = async ({ children, ...attr }: any) => {
 
@@ -41,6 +45,9 @@ const FileTree = ({data, onSelect, onLoadData}: IProps) => {
         height={height - 60}
         loadData={loadData}
         onSelect={select}
+        onExpand={onExpand}
+        expandedKeys={expandedKeys}
+        selectedKeys={selectFile ? [selectFile] : []}
         treeData={data}
       />
     </div>

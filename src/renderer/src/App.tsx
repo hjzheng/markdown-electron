@@ -1,21 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Layout, theme, Tabs } from 'antd'
 import MarkdownEditor from './components/MarkdownEditor'
 import FileTree from './components/FileTree'
 import { ProfileOutlined } from '@ant-design/icons'
+import { getFileName, getParentPaths } from './utils/utils'
 
 const { Sider, Content } = Layout
-
-const getFileName = (path: string) => {
-  // windows
-  if (path.indexOf('\\') > -1) {
-    const arr = path.split('\\')
-    return arr[arr.length - 1]
-  } else {
-    const arr = path.split('/')
-    return arr[arr.length - 1]
-  }
-}
 
 type IFile = {name: string, path: string, fileContent?: string}
 
@@ -24,9 +14,19 @@ function App(): JSX.Element {
   const [file, setFile] = useState<IFile|null>(null)
   const [files, setFiles] = useState<IFile[]>([])
   const [folderTree, setFolderTree] = useState<any[]>([])
+  const [expandedKeys, setExpandedKeys] = useState<string[]>([])
+  const rootFolderRef = useRef<string>('')
+
+  const onFolderExpand = (keys) => {
+    setExpandedKeys(keys)
+  }
 
   const onChange = (key: string) => {
     setFile({ name: getFileName(key), path: key })
+    let expandKeys = getParentPaths(rootFolderRef.current, key || '')
+    if (expandKeys) {
+      setExpandedKeys(expandKeys)
+    }
   }
 
   const add = (file, oldFilePath?) => {
@@ -115,6 +115,7 @@ function App(): JSX.Element {
       
       if (rootFolder) {
         window.api.requestLoadFolder(rootFolder)
+        rootFolderRef.current = rootFolder
       }
       
       if (openFiles) {
@@ -135,6 +136,12 @@ function App(): JSX.Element {
         if (files.length > 0) {
           setFiles(files)
           setFile(file || files[0])
+          
+          let expandKeys = getParentPaths(rootFolder, file?.path || '')
+
+          if (expandKeys) {
+            setExpandedKeys(expandKeys)
+          }
         }
       }
     })
@@ -175,6 +182,7 @@ function App(): JSX.Element {
     })
 
     let callback3 = window.api.loadFolder(folderTree => {
+      rootFolderRef.current = folderTree.path
       setFolderTree([folderTree])
     })
 
@@ -202,7 +210,14 @@ function App(): JSX.Element {
         >
           FOLDERS
         </div>
-        <FileTree data={folderTree} onLoadData={loadSubFolderData} onSelect={onFileSelect}/>
+        <FileTree 
+          data={folderTree} 
+          onLoadData={loadSubFolderData} 
+          selectFile={file?.path || ''}
+          onSelect={onFileSelect} 
+          onExpand={onFolderExpand}
+          expandedKeys={expandedKeys}
+          />
       </Sider>
       <Layout className="site-layout">
         <Content
