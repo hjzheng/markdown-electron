@@ -236,7 +236,13 @@ function App(): JSX.Element {
             activeKey={file?.path}
             type="editable-card"
             onEdit={onEdit}
-            items={files.map(f => ({ label: `${f.name}`, children: <MarkdownEditor fileContent={f.fileContent || ''} onChange={value => setFileContentByPath(f.path, value)}/>, key: f.path }))}
+            items={files.map(f => (
+              { label: `${f.name}`, 
+                children: <MarkdownEditor 
+                    isActived={f.path === file?.path}
+                    fileContent={f.fileContent || ''} 
+                    onChange={value => setFileContentByPath(f.path, value)}/>,
+                key: f.path }))}
           /> : <div
               style={{
                 height: '100%',

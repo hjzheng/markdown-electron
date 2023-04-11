@@ -7,10 +7,11 @@ import useWindowSize from '../utils/resize'
 
 interface IProps {
     fileContent: string
+    isActived: boolean
     onChange: (value: string) => void
 }
 
-function MarkdownEditor({fileContent, onChange}: IProps): JSX.Element {
+function MarkdownEditor({fileContent, isActived, onChange}: IProps): JSX.Element {
     const [options, setOptions] = useState<Options>({
         maxHeight: "300px",
         previewClass: "markdown-body",
@@ -39,6 +40,18 @@ function MarkdownEditor({fileContent, onChange}: IProps): JSX.Element {
             }
         })
     }, [height])
+
+    useEffect(() => {
+        if (isActived) {
+            setOptions((_it) => {
+                return {
+                    maxHeight: height - 180 + 'px',
+                    previewClass: ["markdown-body", "markdown-preview-fix"],
+                    spellChecker: false,
+                }
+            })
+        }
+    }, [isActived])
 
     return <>
         <SimpleMdeReact 
