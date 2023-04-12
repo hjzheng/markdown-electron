@@ -194,7 +194,7 @@ function App(): JSX.Element {
   }, [])
 
   return (
-    <Layout style={{height: '100vh'}}>
+    <Layout style={{height: '100vh', background: colorBgContainer}}>
       <Sider
         trigger={<ProfileOutlined style={{fontSize: 12}}/>}
         theme={'light'} collapsible collapsed={collapsed} collapsedWidth={0} onCollapse={() => setCollapsed(!collapsed)}>

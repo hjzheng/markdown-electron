@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react'
 import { SimpleMdeReact } from "react-simplemde-editor"
 import { Options } from "easymde"
-import "easymde/dist/easymde.min.css"
 import "github-markdown-css/github-markdown.css"
 import useWindowSize from '../utils/resize'
+
+import { getPreferredScheme } from '../utils/colorScheme'
+
+if (getPreferredScheme() === 'dark') {
+    import("easymde/dist/easymde.min.css")
+    // override some style to support dark mode
+    import("@renderer/assets/easymde.dark.min.css")
+} else {
+    import("easymde/dist/easymde.min.css")
+}
 
 interface IProps {
     fileContent: string
