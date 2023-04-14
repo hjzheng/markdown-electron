@@ -13,7 +13,7 @@ interface IProps {
   onExpand?: (keys: React.Key[], info: any) => void
 }
 
-const FileTree = ({data, onLoadData, onSelect, selectFile, onExpand, expandedKeys}: IProps) => {
+const FileTree = React.forwardRef((({data, onLoadData, onSelect, selectFile, onExpand, expandedKeys}: IProps, treeRef: React.Ref<any>) => {
 
   const { height } = useWindowSize()
 
@@ -21,6 +21,10 @@ const FileTree = ({data, onLoadData, onSelect, selectFile, onExpand, expandedKey
     onSelect && onSelect(keys, info)
   };
 
+  const rightClick = ({event, node}) => {
+    event.preventDefault()
+    window.api.requestFileTreeContextMenu(node.path)
+  }
 
   const loadData = async ({ children, ...attr }: any) => {
 
@@ -41,7 +45,10 @@ const FileTree = ({data, onLoadData, onSelect, selectFile, onExpand, expandedKey
   return (
     <div>
       <Tree
+        ref={treeRef}
         showLine
+        blockNode
+        onRightClick={rightClick}
         height={height - 60}
         loadData={loadData}
         onSelect={select}
@@ -52,6 +59,6 @@ const FileTree = ({data, onLoadData, onSelect, selectFile, onExpand, expandedKey
       />
     </div>
   );
-};
+}));
 
 export default FileTree;

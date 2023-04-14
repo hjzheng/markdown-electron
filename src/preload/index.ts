@@ -60,6 +60,30 @@ const api = {
   },
   saveUserPreferencesData(key: 'rootFolder' | 'openFiles' | 'file', value) {
     return ipcRenderer.invoke('saveUserPreferencesData', key, value)
+  },
+  requestFileTreeContextMenu(path: string) {
+    return ipcRenderer.invoke('requestFileTreeContextMenu', path)
+  },
+  createFolder(callback: (e, path: string) => void) {
+    ipcRenderer.on('createFolder', callback)
+    return () => ipcRenderer.off('createFolder', callback)
+  },
+  createFile(callback: (e, path: string) => void) {
+    ipcRenderer.on('createFile', callback)
+    return () => ipcRenderer.off('createFile', callback)
+  },
+  deleteFolderOrFile(callback: (e, path: string) => void) {
+    ipcRenderer.on('deleteFolderOrFile', callback)
+    return () => ipcRenderer.off('deleteFolderOrFile', callback)
+  },
+  requestCreateFolder(path: string) {
+    return ipcRenderer.invoke('requestCreateFolder', path)
+  },
+  requestCreateFile(path: string) {
+    return ipcRenderer.invoke('requestCreateFile', path)
+  },
+  requestDeleteFolderOrFile(path: string) {
+    return ipcRenderer.invoke('requestDeleteFolderOrFile', path)
   }
 }
 

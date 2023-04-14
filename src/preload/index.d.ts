@@ -18,6 +18,13 @@ declare global {
       requestSaveAsFile(fileContent: string): void
       requestUserPreferencesData(keys: ('rootFolder' | 'openFiles' | 'file')[]): Promise<any>
       saveUserPreferencesData(key: 'rootFolder' | 'openFiles' | 'file', value): Promise<boolean>
+      requestFileTreeContextMenu(path: string): Promise<any>
+      createFolder(callback: (e, path: string) => void): () => void
+      createFile(callback: (e, path: string) => void): () => void
+      requestCreateFolder(path: string): Promise<any>
+      requestCreateFile(path: string): Promise<any>
+      deleteFolderOrFile(callback: (e, path: string) => void): () => void
+      requestDeleteFolderOrFile(path: string): Promise<any>
     }
   }
 }

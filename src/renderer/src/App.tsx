@@ -3,7 +3,8 @@ import { Layout, theme, Tabs } from 'antd'
 import MarkdownEditor from './components/MarkdownEditor'
 import FileTree from './components/FileTree'
 import { ProfileOutlined } from '@ant-design/icons'
-import { getFileName, getParentPaths } from './utils/utils'
+import { getFileName, getParentPaths, getParentPath } from './utils/utils'
+import { findTreeNode } from './utils/utils'
 
 const { Sider, Content } = Layout
 
@@ -16,6 +17,7 @@ function App(): JSX.Element {
   const [folderTree, setFolderTree] = useState<any[]>([])
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
   const rootFolderRef = useRef<string>('')
+  const fileTreeRef = useRef<any>(null)
 
   const onFolderExpand = (keys) => {
     setExpandedKeys(keys)
@@ -193,6 +195,53 @@ function App(): JSX.Element {
     }
   }, [])
 
+  const refreshFolder = useCallback(async (path) => {
+    const res = await window.api.requestSubFolder(path)
+    const node = findTreeNode(folderTree, path)
+    if (node) {
+      // @ts-ignore
+      node.children = [...res.children]
+      setFolderTree(() => [...folderTree])
+    }
+  }, [folderTree])
+
+  useEffect(() => {
+    let callback1 = window.api.createFolder(async (_e, path) => {
+      const folderName = await window.api.requestCreateFolder(path)
+      if (folderName) {
+        await refreshFolder(path)
+        setTimeout(() => {
+          fileTreeRef.current?.scrollTo({key: folderName, align: 'bottom', offset: 100})
+        }, 200)
+      }
+    })
+
+    let callback2 = window.api.createFile(async (_e, path) => {
+      const fileName = await window.api.requestCreateFile(path)
+      if (fileName) {
+        await refreshFolder(path)
+        setTimeout(() => {
+          fileTreeRef.current?.scrollTo({key: fileName, align: 'bottom', offset: 100})
+        }, 200)
+      }
+    })
+
+    let callback3 = window.api.deleteFolderOrFile(async (_e, path) => {
+      const res = await window.api.requestDeleteFolderOrFile(path)
+      
+      if (res) {
+        const parentPath = getParentPath(path)
+        await refreshFolder(parentPath)
+      }
+    })
+
+    return () => {
+      callback1 && callback1()
+      callback2 && callback2()
+      callback3 && callback3()
+    }
+  }, [folderTree])
+
   return (
     <Layout style={{height: '100vh', background: colorBgContainer}}>
       <Sider
@@ -211,6 +260,7 @@ function App(): JSX.Element {
           FOLDERS
         </div>
         <FileTree 
+          ref={fileTreeRef}
           data={folderTree} 
           onLoadData={loadSubFolderData} 
           selectFile={file?.path || ''}

@@ -6,6 +6,24 @@ import { createApplicationMenu } from './createApplicationMenu'
 import fs from 'fs'
 import path from 'path'
 import { store } from './store'
+import { createContextMenu } from './createContextMenu'
+
+function removeDirSync(dir) {
+  let files = fs.readdirSync(dir)
+  console.log(files, 'files')
+  for (var i = 0; i < files.length; i++) {
+    let newPath = path.join(dir, files[i]);
+    let stat = fs.statSync(newPath)
+    if (stat.isDirectory()) {
+      // 如果是文件夹就递归下去
+      removeDirSync(newPath)
+    } else {
+      // 删除文件
+      fs.unlinkSync(newPath)
+    }
+  }
+  fs.rmdirSync(dir)
+}
 
 const dirTree = require("directory-tree")
 
@@ -171,4 +189,90 @@ ipcMain.handle('saveUserPreferencesData', (_event, key, value) => {
   } catch (e) {
     return false
   }
+})
+
+ipcMain.handle('requestFileTreeContextMenu', (_event, path) => {
+  const win = BrowserWindow.fromWebContents(_event.sender)
+  if (win) createContextMenu(path).popup({ window: win })
+  return path
+})
+
+ipcMain.handle('requestCreateFolder', (_event, path) => {
+  const win = BrowserWindow.fromWebContents(_event.sender)
+
+  const options = {
+    title: 'create new folder',
+    defaultPath: path,
+    buttonLabel: '创建',
+  };
+
+  if (win) {
+    const newDir = dialog.showSaveDialogSync(win, options);
+    if (newDir) {
+      fs.mkdirSync(newDir)
+    }
+    return newDir
+  } else {
+    return null
+  }
+})
+
+ipcMain.handle('requestDeleteFolderOrFile', async (_event, _path) => {
+  const win = BrowserWindow.fromWebContents(_event.sender)
+
+  if (win) {
+  
+    const stat = fs.statSync(_path)
+    const isDirectory = stat.isDirectory()
+
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning',
+      title: '删除文件',
+      message: `确定要删除${isDirectory ? '文件夹' : '文件'} ${path.basename(_path)} 吗？`,
+      buttons: ['确定', '取消'],
+    })
+
+    if (response === 0) {
+      if (isDirectory) {
+        removeDirSync(_path)
+      } else {
+        fs.unlinkSync(_path)
+      }
+      return true
+    } else {
+      return false
+    }
+  } else {
+    return false
+  }
+})
+
+ipcMain.handle('requestCreateFile', (_event, path) => {
+  const win = BrowserWindow.fromWebContents(_event.sender)
+
+  const options = {
+    title: 'create new file',
+    defaultPath: path,
+    buttonLabel: '创建',
+    filters: [
+      {
+        name: 'MyNewFile',
+        extensions: ['md']
+      }
+    ]
+  };
+
+  if (win) {
+    const newFileName = dialog.showSaveDialogSync(win, options);
+
+    if (newFileName) {
+      fs.writeFileSync(newFileName, '');
+    }
+
+    return newFileName
+
+  } else {
+    return null
+  }
+
 })

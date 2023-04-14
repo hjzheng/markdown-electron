@@ -32,6 +32,12 @@ export const getFileName = (path: string) => {
     }
 }
 
+export const getParentPath = (path) => {
+    let isWindows = path.indexOf('\\') > -1
+    let separator = isWindows ? '\\' : '/'
+    return path.split(separator).slice(0, -1).join(separator)
+}
+
 export const getParentPaths = (rootFolderPath: string, filePath: string) => {
     let isWindows = rootFolderPath.indexOf('\\') > -1
 
