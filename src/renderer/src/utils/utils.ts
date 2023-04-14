@@ -32,6 +32,11 @@ export const getFileName = (path: string) => {
     }
 }
 
+export const getSeparator = (path) => {
+    let isWindows = path.indexOf('\\') > -1
+    return isWindows ? '\\' : '/'
+}
+
 export const getParentPath = (path) => {
     let isWindows = path.indexOf('\\') > -1
     let separator = isWindows ? '\\' : '/'
@@ -63,4 +68,16 @@ export const getParentPaths = (rootFolderPath: string, filePath: string) => {
     } else {
         return null
     }
+}
+
+// validate file name
+export const validateFileName = (name: string) => {
+    let reg = new RegExp('[\\\\/:*?"<>|]')
+    return !reg.test(name)
+}
+
+// validate directory name
+export const validateDirectoryName = (name: string) => {
+    let reg = new RegExp('[\\\\/:*?"<>|]')
+    return !reg.test(name)
 }

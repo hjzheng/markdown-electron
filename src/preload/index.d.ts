@@ -23,8 +23,10 @@ declare global {
       createFile(callback: (e, path: string) => void): () => void
       requestCreateFolder(path: string): Promise<any>
       requestCreateFile(path: string): Promise<any>
-      deleteFolderOrFile(callback: (e, path: string) => void): () => void
+      deleteFolderOrFile(callback: (e, path: string, isDirectory: boolean) => void): () => void
       requestDeleteFolderOrFile(path: string): Promise<any>
+      renameFolderOrFile(callback: (e, path: string, isDirectory: boolean) => void): () => void
+      requestRenameFolderOrFile(path: string, newPath: string): Promise<any>
     }
   }
 }

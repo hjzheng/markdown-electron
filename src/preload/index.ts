@@ -72,9 +72,13 @@ const api = {
     ipcRenderer.on('createFile', callback)
     return () => ipcRenderer.off('createFile', callback)
   },
-  deleteFolderOrFile(callback: (e, path: string) => void) {
+  deleteFolderOrFile(callback: (e, path: string, isDirectory: boolean) => void) {
     ipcRenderer.on('deleteFolderOrFile', callback)
     return () => ipcRenderer.off('deleteFolderOrFile', callback)
+  },
+  renameFolderOrFile(callback: (e, path: string, isDirectory: boolean) => void) {
+    ipcRenderer.on('renameFolderOrFile', callback)
+    return () => ipcRenderer.off('renameFolderOrFile', callback)
   },
   requestCreateFolder(path: string) {
     return ipcRenderer.invoke('requestCreateFolder', path)
@@ -84,6 +88,9 @@ const api = {
   },
   requestDeleteFolderOrFile(path: string) {
     return ipcRenderer.invoke('requestDeleteFolderOrFile', path)
+  },
+  requestRenameFolderOrFile(path: string, newName: string) {
+    return ipcRenderer.invoke('requestRenameFolderOrFile', path, newName)
   }
 }
 

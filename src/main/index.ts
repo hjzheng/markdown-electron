@@ -198,81 +198,43 @@ ipcMain.handle('requestFileTreeContextMenu', (_event, path) => {
 })
 
 ipcMain.handle('requestCreateFolder', (_event, path) => {
-  const win = BrowserWindow.fromWebContents(_event.sender)
+  try {
+    fs.mkdirSync(path)
+    return true
+  } catch (e) {
+    return false
+  }
+})
 
-  const options = {
-    title: 'create new folder',
-    defaultPath: path,
-    buttonLabel: '创建',
-  };
-
-  if (win) {
-    const newDir = dialog.showSaveDialogSync(win, options);
-    if (newDir) {
-      fs.mkdirSync(newDir)
-    }
-    return newDir
-  } else {
-    return null
+ipcMain.handle('requestRenameFolderOrFile', async (_event, _path, newPath) => {
+  try {
+    fs.renameSync(_path, newPath)
+    return true
+  } catch(e) {
+    return false
   }
 })
 
 ipcMain.handle('requestDeleteFolderOrFile', async (_event, _path) => {
-  const win = BrowserWindow.fromWebContents(_event.sender)
-
-  if (win) {
-  
-    const stat = fs.statSync(_path)
-    const isDirectory = stat.isDirectory()
-
-    const { response } = await dialog.showMessageBox(win, {
-      type: 'warning',
-      title: '删除文件',
-      message: `确定要删除${isDirectory ? '文件夹' : '文件'} ${path.basename(_path)} 吗？`,
-      buttons: ['确定', '取消'],
-    })
-
-    if (response === 0) {
+    try {
+      const stat = fs.statSync(_path)
+      const isDirectory = stat.isDirectory()
       if (isDirectory) {
         removeDirSync(_path)
       } else {
         fs.unlinkSync(_path)
       }
       return true
-    } else {
+    } catch(e) {
       return false
     }
-  } else {
-    return false
-  }
 })
 
 ipcMain.handle('requestCreateFile', (_event, path) => {
-  const win = BrowserWindow.fromWebContents(_event.sender)
-
-  const options = {
-    title: 'create new file',
-    defaultPath: path,
-    buttonLabel: '创建',
-    filters: [
-      {
-        name: 'MyNewFile',
-        extensions: ['md']
-      }
-    ]
-  };
-
-  if (win) {
-    const newFileName = dialog.showSaveDialogSync(win, options);
-
-    if (newFileName) {
-      fs.writeFileSync(newFileName, '');
+    try {
+      fs.writeFileSync(path, '');
+      return true
+    } catch (e) {
+      return false
     }
-
-    return newFileName
-
-  } else {
-    return null
-  }
-
 })
