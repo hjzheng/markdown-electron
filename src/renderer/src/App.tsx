@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Layout, theme, Tabs } from 'antd'
-import MarkdownEditor from './components/MarkdownEditor'
+import { Layout, theme } from 'antd'
+import { MarkdownTabs } from './components/MarkdownTabs'
 import FileTree from './components/FileTree'
 import { ProfileOutlined } from '@ant-design/icons'
-import { getFileName, getParentPaths, findTreeNode } from './utils/utils'
+import { getParentPaths, findTreeNode } from './utils/utils'
 import { Dialog } from './components/Dialog'
 import { Welcome } from './components/Welcome'
 
@@ -25,59 +25,13 @@ function App(): JSX.Element {
     setExpandedKeys(keys)
   }
 
-  const onChange = (key: string) => {
-    setFile({ name: getFileName(key), path: key })
-    let expandKeys = getParentPaths(rootFolderRef.current, key || '')
+  const onFileChange = (file: IFile) => {
+    setFile(file)
+    let expandKeys = getParentPaths(rootFolderRef.current, file.path || '')
     if (expandKeys) {
       setExpandedKeys(expandKeys)
     }
-  }
-
-  const add = (file, oldFilePath?) => {
-    const index = files.findIndex((f) => f.path === file.path);
-    if (index === -1) {
-      Promise.resolve().then(() => {
-        setFiles((files) => {
-          const index = files.findIndex(f => f.path === oldFilePath)
-          if (index !== -1) {
-            files[index] = file
-            return [...files]
-          } else {
-            return [...files, file]
-          }
-        })
-      }).then(() => { 
-        setFile({ name: file.name, path: file.path })
-      })
-    } else {
-      setFile({ name: file.name, path: file.path })
-    }
-  }
-
-  const remove = (targetKey) => {
-    const targetIndex = files.findIndex((pane) => pane.path === targetKey);
-    const newFiles = files.filter((pane) => pane.path !== targetKey);
-    if (newFiles.length && targetKey === file?.path) {
-      const { path, name } = newFiles[targetIndex === newFiles.length ? targetIndex - 1 : targetIndex];
-      setFile({ name, path })
-    }
-    setFiles(newFiles);
-  };
-
-
-  const onEdit = (targetKey, action: 'add' | 'remove') => {
-    if (action === 'add') {
-      add({ name: '未命名文件', path: 'fakePath' + Date.now(), fileContent: '' });
-    } else {
-      remove(targetKey);
-    }
-  };
-
-  const setFileContentByPath = (path: string, fileContent) => {
-    const file = files.find(it => it.path === path)
-    if (file) file.fileContent = fileContent
-    setFiles([...files])
-  }
+  }  
 
   const {
     token: { colorBgContainer },
@@ -87,11 +41,34 @@ function App(): JSX.Element {
     setFolderTree([...data])
   }
 
+  const add = (file, oldFilePath?) => {
+    const index = files.findIndex((f) => f.path === file.path);
+    if (index === -1) {
+        Promise.resolve().then(() => {
+            // @ts-ignore
+            setFiles((files) => {
+                const index = files.findIndex(f => f.path === oldFilePath)
+                if (index !== -1) {
+                    files[index] = file
+                    return [...files]
+                } else {
+                    return [...files, file]
+                }
+            })
+        }).then(() => {
+            setFile({ name: file.name, path: file.path })
+        })
+    } else {
+        setFile({ name: file.name, path: file.path })
+    }
+  }
+
   const onFileSelect = async (_keys, info) => {
     const { node } = info
     if (node.extension === '.md') {
       const fileContent = await window.api.requestFileContent(node.path)
-      add({ name: node.title, path: node.path, fileContent: fileContent })
+      const file = { name: node.title, path: node.path, fileContent: fileContent }
+      add(file)
     }
   }
 
@@ -146,23 +123,15 @@ function App(): JSX.Element {
     })
   }, [])
 
-  const saveAsFile = useCallback(() => {
-    const _file = files.find(it => it.path === file?.path)
-    if(_file) window.api.requestSaveAsFile(_file.fileContent || '')
-  }, [files])
-
-  const saveFile = useCallback(() => {
-    const _file = files.find(it => it.path === file?.path)
-    if(_file) window.api.requestSaveFile(_file.fileContent || '', _file.path)
-  }, [files])
-
   useEffect(() => {
     let callback1 = window.api.saveFile(() => {
-      saveFile()
+      const _file = files.find(it => it.path === file?.path)
+      if(_file) window.api.requestSaveFile(_file.fileContent || '', _file.path)
     })
   
     let callback2 = window.api.saveAsFile(() => {
-      saveAsFile()
+      const _file = files.find(it => it.path === file?.path)
+      if(_file) window.api.requestSaveAsFile(_file.fileContent || '')
     })
 
     return () => {
@@ -172,25 +141,26 @@ function App(): JSX.Element {
   } , [files]) 
 
   useEffect(() => {
-    let callback1 = window.api.newFile(() => {
-      add({ name: '未命名文件', path: 'fakePath' + Date.now(), fileContent: '' });
-    })
-
-    let callback2 = window.api.loadFile((fileContent, file, oldFilePath) => {
-      add({ name: file.name, path: file.path, fileContent: fileContent }, oldFilePath)
-    })
-
-    let callback3 = window.api.loadFolder(folderTree => {
+    let callback = window.api.loadFolder(folderTree => {
       rootFolderRef.current = folderTree.path
       setFolderTree([folderTree])
     })
 
+    let callback1 = window.api.newFile(() => {
+        add({ name: '未命名文件', path: 'fakePath' + Date.now(), fileContent: '' });
+    })
+
+    let callback2 = window.api.loadFile((fileContent, file, oldFilePath) => {
+        add({ name: file.name, path: file.path, fileContent: fileContent }, oldFilePath)
+    })
+
     return () => {
-      callback1 && callback1()
-      callback2 && callback2()
-      callback3 && callback3()
+        callback && callback()
+        callback1 && callback1()
+        callback2 && callback2()
     }
   }, [])
+
 
   const refreshFolder = useCallback(async (folderTree, path) => {
     const res = await window.api.requestSubFolder(path)
@@ -253,19 +223,13 @@ function App(): JSX.Element {
         >
         {
           files.length !== 0 ?
-          <Tabs
-            onChange={onChange}
-            activeKey={file?.path}
-            type="editable-card"
-            onEdit={onEdit}
-            items={files.map(f => (
-              { label: `${f.name}`, 
-                children: <MarkdownEditor 
-                    isActived={f.path === file?.path}
-                    fileContent={f.fileContent || ''} 
-                    onChange={value => setFileContentByPath(f.path, value)}/>,
-                key: f.path }))}
-          /> : <Welcome />
+          <MarkdownTabs 
+            file={file} 
+            files={files} 
+            onFileChange={onFileChange}
+            onFilesChange={setFiles} 
+            onAddFile={add} /> : 
+            <Welcome />
         } 
         </Content>
       </Layout>
