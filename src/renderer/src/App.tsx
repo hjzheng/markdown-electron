@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Layout, theme, Tabs, Modal, Input, message } from 'antd'
+import { Layout, theme, Tabs } from 'antd'
 import MarkdownEditor from './components/MarkdownEditor'
 import FileTree from './components/FileTree'
 import { ProfileOutlined } from '@ant-design/icons'
-import { getFileName, getParentPaths, getParentPath, findTreeNode, validateFileName, getSeparator } from './utils/utils'
+import { getFileName, getParentPaths, findTreeNode } from './utils/utils'
+import { Dialog } from './components/Dialog'
+import { Welcome } from './components/Welcome'
 
 const { Sider, Content } = Layout
 
@@ -15,11 +17,6 @@ function App(): JSX.Element {
   const [files, setFiles] = useState<IFile[]>([])
   const [folderTree, setFolderTree] = useState<any[]>([])
   const [expandedKeys, setExpandedKeys] = useState<string[]>([])
-  const [newPath, setNewPath] = useState('')
-  const [oldPath, setOldPath] = useState('')
-  const [modalVisible, setModalVisible] = useState(false)
-  const [modalTitle, setModelTitle] = useState('')
-  const [okfunName, setOkfunName] = useState('')
 
   const rootFolderRef = useRef<string>('')
   const fileTreeRef = useRef<any>(null)
@@ -96,11 +93,6 @@ function App(): JSX.Element {
       const fileContent = await window.api.requestFileContent(node.path)
       add({ name: node.title, path: node.path, fileContent: fileContent })
     }
-  }
-
-  const addAction = (action) => {
-    // boswer send action 
-    window.api[action]()
   }
 
   useEffect(() => {
@@ -200,7 +192,7 @@ function App(): JSX.Element {
     }
   }, [])
 
-  const refreshFolder = useCallback(async (path) => {
+  const refreshFolder = useCallback(async (folderTree, path) => {
     const res = await window.api.requestSubFolder(path)
     const node = findTreeNode(folderTree, path)
     if (node) {
@@ -210,136 +202,20 @@ function App(): JSX.Element {
     }
   }, [folderTree])
 
-  useEffect(() => {
-    let callback1 = window.api.createFolder(async (_e, path) => {
-      setOldPath(path)
-      setNewPath('新建目录')
-      setModalVisible(true)
-      setModelTitle('创建目录')
-      setOkfunName('createFolder')
-    })
+  const successCallback = useCallback(async (path, targetKey) => {
+    await refreshFolder(folderTree, path)
 
-    let callback2 = window.api.createFile(async (_e, path) => {
-      setOldPath(path)
-      setNewPath('新建文件')
-      setModalVisible(true)
-      setModelTitle('创建文件')
-      setOkfunName('createFile')
-    })
-
-    let callback3 = window.api.deleteFolderOrFile(async (_e, path, isDirectory) => {
-      // 弹窗
-      await Modal.confirm({
-        title: '删除',
-        content: `确定要删除${isDirectory ? '目录' : '文件'}${getFileName(path)}吗？`,
-        okText: '确认',
-        cancelText: '取消',
-        onOk: async () => {
-          const res = await window.api.requestDeleteFolderOrFile(path)
-
-          if (res) {
-            const parentPath = getParentPath(path)
-            await refreshFolder(parentPath)
-          }
-        }
-      })
-    })
-
-    let callback4 = window.api.renameFolderOrFile(async (_e, path) => {
-      setOldPath(path)
-      setNewPath(getFileName(path))
-      setModalVisible(true)
-      setModelTitle('重命名')
-      setOkfunName('rename')
-    })
-
-    return () => {
-      callback1 && callback1()
-      callback2 && callback2()
-      callback3 && callback3()
-      callback4 && callback4()
-    }
-  }, [folderTree, oldPath, newPath, modalVisible, modalTitle, okfunName])
-
-  const cancel = () => {
-    setNewPath('')
-    setOldPath('')
-    setModalVisible(false)
-  }
-
-  const renameOK = async () => {
-    const path = oldPath
-    if (!validateFileName(newPath.trim())) {
-      message.error('文件名不合法')
-      return
-    }
-    const _newPath = getParentPath(path) + getSeparator(path) + newPath.trim()
-    const res = await window.api.requestRenameFolderOrFile(path, _newPath)
-    if (res) {
-      const parentPath = getParentPath(path)
-      await refreshFolder(parentPath)
-    }
-    cancel()
-  }
-
-  const createFolderOK = async () => {
-    const path = oldPath
-
-    if (!validateFileName(newPath.trim())) {
-      message.error('目录名不合法')
-      return
-    }
-
-    const _newPath = path + getSeparator(path) + newPath.trim()
-          
-    const res = await window.api.requestCreateFolder(_newPath)
-
-    if (res) {
-      await refreshFolder(path)
+    if (targetKey) {
       setTimeout(() => {
-        fileTreeRef.current?.scrollTo({key: _newPath, align: 'bottom', offset: 100})
+        fileTreeRef.current?.scrollTo({ key: targetKey, align: 'bottom', offset: 100 })
       }, 200)
     }
+  }, [folderTree])
 
-    cancel()
-  }
-
-  const createFileOK = async () => {
-    const path = oldPath
-
-    if (!validateFileName(newPath.trim())) {
-      message.error('文件名不合法')
-      return
-    }
-
-    const _newPath = path + getSeparator(path) + newPath.trim()
-          
-    const res = await window.api.requestCreateFile(_newPath)
-    
-    if (res) {
-      await refreshFolder(path)
-      setTimeout(() => {
-        fileTreeRef.current?.scrollTo({key: _newPath, align: 'bottom', offset: 100})
-      }, 200)
-    }
-
-    cancel()
-  }
-
-  const oks = {
-    rename: renameOK,
-    createFile: createFileOK,
-    createFolder: createFolderOK,
-  }
-
+  
   return (
     <Layout style={{height: '100vh', background: colorBgContainer}}>
-      <Modal open={modalVisible} title={modalTitle} 
-        onOk={oks[okfunName]}
-        onCancel={cancel}
-        >
-        <Input value={newPath} onChange={(e) => setNewPath(e.target.value)}/>,
-      </Modal>
+      <Dialog callback={successCallback} />
       <Sider
         trigger={<ProfileOutlined style={{fontSize: 12}}/>}
         theme={'light'} collapsible collapsed={collapsed} collapsedWidth={0} onCollapse={() => setCollapsed(!collapsed)}>
@@ -389,22 +265,7 @@ function App(): JSX.Element {
                     fileContent={f.fileContent || ''} 
                     onChange={value => setFileContentByPath(f.path, value)}/>,
                 key: f.path }))}
-          /> : <div
-              style={{
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                background: colorBgContainer,
-                paddingLeft: '10px',
-                fontWeight: 'bold',
-                justifyContent: 'center',
-                flexDirection: 'column',
-              }}>
-                <h3>欢迎使用</h3>
-                <a style={{padding: '0 10px'}} onClick={() => addAction('requestLoadFile') }>打开文件</a>
-                <a style={{padding: '0 10px'}} onClick={() => addAction('requestLoadFolder') }>打开目录</a>
-                <a style={{padding: '0 10px'}} onClick={() => addAction('requestNewFile') }>新建文件</a>
-              </div>
+          /> : <Welcome />
         } 
         </Content>
       </Layout>
